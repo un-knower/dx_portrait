@@ -31,7 +31,7 @@ class GBDTTrait extends PortraitTrait {
   @BeanProperty
   var learnGoal: String = "Classification"
   // Empty categoricalFeaturesInfo indicates all features are continuous.
-  var map = Map[Int,Int]()
+
   //最大叶子节点数
   @BeanProperty
   var maxBins:Integer = _
@@ -60,8 +60,8 @@ class GBDTTrait extends PortraitTrait {
       maxDepth = prop.getProperty("GBDT.maxDepth").toInt
     }
     boostingStrategy.getTreeStrategy().setMaxDepth(maxDepth)
-    //map为空所有特征
-    boostingStrategy.treeStrategy.setCategoricalFeaturesInfo(map)
+    /*    //map为空所有特征
+    boostingStrategy.treeStrategy.setCategoricalFeaturesInfo(Map[Int,Int]())*/
     //默认  如果配置文件中有就设置
     if (prop.get("GBDT.maxBins") != null) {
       maxBins = prop.getProperty("GBDT.maxBins").toInt

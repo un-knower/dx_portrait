@@ -66,7 +66,7 @@ object DataService extends Serializable {
       log.warn("deal mongo orgin data")
       val mongo = sc.newAPIHadoopRDD(config, classOf[MongoInputFormat], classOf[Object], classOf[BSONObject])
       val mongoOrginRdd = mongo.map(_._2)
-      mongoOrginRdd.saveAsObjectFile(PathUtil.getMongoOrginPath)
+      mongoOrginRdd.coalesce(200).saveAsObjectFile(PathUtil.getMongoOrginPath)
     }else{
       log.warn("mongo orgin has exists")
     }
@@ -205,7 +205,7 @@ object DataService extends Serializable {
       }).flatMap(line => {
         val features = line.split(",")(2)
         features.split("\\|").map(line => line.split(":")(0))
-      }).distinct().collect().zipWithIndex
+      }).distinct().collect().sorted.zipWithIndex.map(line=>(line._1,line._2+1))
       FileDao.saveFeatureIndex(feature_index, PathUtil.getFeatureIndex)
       log.warn("take feature index success")
     } else {
@@ -248,7 +248,7 @@ object DataService extends Serializable {
           feature = feature.split("\\|").map(line => {
             val split1 = line.split(":")
             (map.getOrElse(split1(0), null), split1(1))
-          }).filter(_._1 != null).map(line => line._1 + ":" + line._2).mkString(" ")
+          }).filter(_._1 != null).sortBy(_._1.toDouble).map(line => line._1 + ":" + line._2).mkString(" ")
           stringBuilder.append(feature)
           list += stringBuilder.toString()
           stringBuilder.clear()

@@ -1,6 +1,6 @@
 package com.lee.dao
 
-import com.lee.service.{DecisionTreeService, GBDTService, LBFGSService, ServiceTrait}
+import com.lee.service._
 
 /**
   * Created with Lee.
@@ -18,6 +18,7 @@ object Factory {
       case "LBFGS" => new LBFGSService()
       case "DecisionTree" => new DecisionTreeService()
       case "GBDT" => new GBDTService()
+      case "RandomForest" => new RandomForestService()
       case _ => null
     }
   }
