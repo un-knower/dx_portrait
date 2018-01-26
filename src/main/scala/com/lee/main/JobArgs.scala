@@ -27,6 +27,8 @@ object JobArgs {
   var fsDefault:String = _
   @BeanProperty
   var sampleCount:String = _
+  @BeanProperty
+  var modelName:String = _
 
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 

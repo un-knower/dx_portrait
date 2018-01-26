@@ -32,5 +32,22 @@ class StcStats {
   @BeanProperty
   var err:Double = _
 
+  @JSONField
+  @BeanProperty
+  var fn:Long = _
+
+  @JSONField
+  @BeanProperty
+  var fp:Long = _
+
+  @JSONField
+  @BeanProperty
+  var tp:Long = _
+
+  @JSONField
+  @BeanProperty
+  var tn:Long = _
+
+
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 }

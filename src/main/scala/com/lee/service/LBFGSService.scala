@@ -1,5 +1,7 @@
 package com.lee.service
 
+import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.serializer.SerializeFilter
 import com.lee.main.JobArgs
 import com.lee.portrait.LBFGSTrait
 import com.lee.utils.{FileReporter, MllibUtils}
@@ -49,4 +51,5 @@ class LBFGSService extends ServiceTrait {
     log.info("Area under ROC = " + auROC)
     super.stc(predict_test_rdd)
   }
+
 }

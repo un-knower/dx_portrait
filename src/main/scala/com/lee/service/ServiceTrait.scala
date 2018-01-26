@@ -58,13 +58,6 @@ trait ServiceTrait extends LogUtils {
     */
   def updateDxSex() = ???
 
-  def traitDate2Svm() = {
-    //TODO 处理训练数据喂svm格式
-    /*if (!HDFSUtil.exists(PathUtil.ModelinputSvmPath)) {
-      log.error("no svm data,model exit")
-    }*/
-  }
-
   /**
     * run方法
     *
@@ -74,7 +67,6 @@ trait ServiceTrait extends LogUtils {
     log.info("in service run method")
     //读取输入出去成rdd
     log.info("read traitDataPath to rdd")
-    traitDate2Svm()
     //处理成labelpointrdd
     log.info("deal rdd 2 labelpoint")
     val modelInputRdd: RDD[LabeledPoint] = MLUtils.loadLibSVMFile(sc,PathUtil.getSvmSavePath)

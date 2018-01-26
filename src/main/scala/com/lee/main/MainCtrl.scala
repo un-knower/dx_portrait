@@ -59,6 +59,9 @@ object MainCtrl {
       JobArgs.fsDefault = PropUtil.getProperty("fs.default")
       HDFSUtil.init(PropUtil.getProperty("fs.default"))
     }
+    if (PropUtil.getProperty("model.name") != null) {
+      JobArgs.modelName = PropUtil.getProperty("model.name")
+    }
     FileReporter.singlton.init()
     sparkInit()
     //数据服务
@@ -88,6 +91,7 @@ object MainCtrl {
     if (StringUtils.isEmpty(JobArgs.model)
       || StringUtils.isEmpty(JobArgs.basePath)
       || StringUtils.isEmpty(JobArgs.outputPath)
+      || StringUtils.isEmpty(JobArgs.modelName)
       || StringUtils.isEmpty(JobArgs.fsDefault)) {
       println("JobArgs is error")
       sys.exit(1)

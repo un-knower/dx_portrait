@@ -19,9 +19,9 @@ object PathUtil {
   //mongo 输出
   def getMongoSampleDataPath:String = JobArgs.basePath+"/data/trainsample/"+date
   //svm 保存路径
-  def getSvmSavePath = JobArgs.basePath+"/data/svmdata/"+date+"/"
+  def getSvmSavePath = JobArgs.basePath+"/data/"+JobArgs.modelName+"svmdata/"+date+"/"
   //模型输出路径
-  def getModelSavePath:String = JobArgs.outputPath+"/model/"+JobArgs.model+"/"+minStr
+  def getModelSavePath:String = JobArgs.outputPath+"/model/"+JobArgs.modelName+"/"+JobArgs.model+"/"+minStr
   //配置文件
   def configPathByName(name: String) = JobArgs.basePath + "/config/" + name
   //得到日志路径

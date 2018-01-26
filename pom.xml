@@ -19,8 +19,16 @@
         <scala-version>2.10.6</scala-version>
         <ali-json-version>1.2.32</ali-json-version>
         <maven-dependency-plugin-version>3.0.2</maven-dependency-plugin-version>
+        <junit-version>4.12</junit-version>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit-version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>

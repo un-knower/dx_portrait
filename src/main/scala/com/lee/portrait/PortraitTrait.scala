@@ -5,6 +5,7 @@ import java.util.Properties
 import com.lee.utils.{FileReporter, LogUtils, PropUtil}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 
 /**
@@ -25,7 +26,9 @@ trait PortraitTrait extends LogUtils {
     */
   def init(rdd: RDD[LabeledPoint],propName:String) :Unit= {
     prop = PropUtil.getPropByName(propName)
+    //TODO 增加样本数据处理
     lpRdd = rdd
+    dealSampleRDD()
     lpRdd.cache()
     //切分比例
     if (prop.getProperty("split.arr") != null) {
@@ -49,4 +52,9 @@ trait PortraitTrait extends LogUtils {
     */
   def run(sc: SparkContext):RDD[(Double, LabeledPoint)] = ???
 
+
+  def dealSampleRDD(): Unit ={
+    val label_count: Array[(Double, Int)] = lpRdd.map(line=>(line.label,1)).reduceByKey(_+_).collect()
+    val minCount = label_count.sortBy(_._2).head._2
+  }
 }

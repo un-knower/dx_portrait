@@ -5,7 +5,7 @@ import java.io.PrintWriter
 import com.lee.dao.FileDao
 import com.lee.des.DesUtil
 import com.lee.main.JobArgs
-import com.lee.utils.{FIles, HDFSUtil, PathUtil, PropUtil}
+import com.lee.utils._
 import com.mongodb.BasicDBList
 import com.mongodb.hadoop.MongoInputFormat
 import org.apache.commons.lang.StringUtils
@@ -35,7 +35,6 @@ object DataService extends Serializable {
   var mongoRdd: RDD[String] = _
   val log = Logger.getLogger(getClass)
 
-  //TODO 初始化数据服务
   def init(sparkContext: SparkContext): Unit = {
     sc = sparkContext
   }
@@ -55,6 +54,7 @@ object DataService extends Serializable {
     2018 - g.substring(0, 4).toInt
   }
 
+
   def getSampleRdd: Unit = {
     val config = new Configuration()
     PropUtil.prop.foreach(line => {
@@ -67,7 +67,7 @@ object DataService extends Serializable {
       val mongo = sc.newAPIHadoopRDD(config, classOf[MongoInputFormat], classOf[Object], classOf[BSONObject])
       val mongoOrginRdd = mongo.map(_._2)
       mongoOrginRdd.coalesce(200).saveAsObjectFile(PathUtil.getMongoOrginPath)
-    }else{
+    } else {
       log.warn("mongo orgin has exists")
     }
     if (!HDFSUtil.exists(PathUtil.getMongoSampleDataPath)) {
@@ -77,7 +77,10 @@ object DataService extends Serializable {
       val app_name_broad = sc.broadcast(FIles.app_name)
       //是否存在原始数据
       val rdd = sc.objectFile[BSONObject](PathUtil.getMongoOrginPath)
-      val saveRdd = rdd.map(bson => {
+      val saveRdd = rdd.filter(bson => {
+        val list = bson.get("apps").asInstanceOf[BasicDBList]
+        list.size() >= 2
+      }).map(bson => {
         try {
           val app_class_name = app_class_name_brod.value
           val app_name = app_name_broad.value
@@ -85,13 +88,11 @@ object DataService extends Serializable {
           //把一跳数据处理成一个样本保存
           val oneList = new ListBuffer[(String, Double)]
           bson.get("apps").asInstanceOf[BasicDBList].foreach(line => {
-            breakable {
-              val app = line.asInstanceOf[BasicBSONObject]
-              //app
-              val app_id = app.getString("k")
-              /*if (!app_name.contains(app_id)) {
-                break()
-              }*/
+            val app = line.asInstanceOf[BasicBSONObject]
+            //app
+            val app_id = app.getString("k")
+            val atime = app.getOrDefault("atime", "2000-01-01").toString
+            if (atime >= DateUtil.getDateStr(-10, "yyyy-MM-dd")) {
               //频次
               var app_freq: Double = 1
               if (app.containsField("v")) {
@@ -99,7 +100,7 @@ object DataService extends Serializable {
               }
               oneList += ((app_id, app_freq))
               //标签
-              var tags: List[String] = null
+              var tags: List[String] = List[String]()
               if (app_class_name.contains(app_id)) {
                 tags = app_class_name.get(app_id).get.map(_._1).toList
                 tags.foreach(line => oneList += ((line, app_freq)))
@@ -161,7 +162,9 @@ object DataService extends Serializable {
           } else {
             stringBuilder.append(g + ",")
           }
-          stringBuilder.append(res.mkString("|"))
+          stringBuilder.append(res.mkString("|") + ",")
+          //增加_id 输出
+          stringBuilder.append(bson.get("_id").toString)
           stringBuilder.toString()
         } catch {
           case e: Exception => e.printStackTrace()
@@ -172,40 +175,45 @@ object DataService extends Serializable {
       mongoRdd = saveRdd.filter(line => {
         var flag = false
         val split = line.split(",")
-        if (split.length == 3) {
-          if (split(0).equals("男") || split(0).equals("女")) {
-            if (split(1).length == 8) {
-              val i = 2018 - split(1).substring(0, 4).toInt
-              if (i <= 60 && i >= 12) {
-                flag = true
+        if (split.length == 4) {
+          if (StringUtils.isNotBlank(split(0)) && StringUtils.isNotBlank(split(1)) && StringUtils.isNotBlank(split(2)) && StringUtils.isNotBlank(split(3))) {
+            if (split(0).equals("男") || split(0).equals("女")) {
+              if (split(1).length == 8) {
+                val i = 2018 - split(1).substring(0, 4).toInt
+                if (i <= 60 && i >= 12) {
+                  flag = true
+                }
               }
             }
           }
         }
         flag
       }).repartition(PropUtil.prop.getProperty("repartition.num", 20 + "").toInt)
-      mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
+      getMongo()
       mongoRdd.saveAsTextFile(PathUtil.getMongoSampleDataPath)
     } else {
       log.warn("taday has deal mongo data")
     }
+
+
   }
 
 
-  //TODO 提取特征和索引
   def takeFeature2File = {
     if (!HDFSUtil.exists(PathUtil.getFeatureIndex)) {
       if (mongoRdd == null) {
         mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
+        mongoRdd = mongoRdd.filter(line => {
+          val split = line.split(",")
+          split.length == 4 && StringUtils.isNotBlank(split(2))
+        })
         mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
       }
       //文件提取特征
-      val feature_index = mongoRdd.filter(line => {
-        line.split(",").length == 3
-      }).flatMap(line => {
+      val feature_index = mongoRdd.flatMap(line => {
         val features = line.split(",")(2)
         features.split("\\|").map(line => line.split(":")(0))
-      }).distinct().collect().sorted.zipWithIndex.map(line=>(line._1,line._2+1))
+      }).distinct().collect().sorted.zipWithIndex.map(line => (line._1, line._2 + 1))
       FileDao.saveFeatureIndex(feature_index, PathUtil.getFeatureIndex)
       log.warn("take feature index success")
     } else {
@@ -215,20 +223,27 @@ object DataService extends Serializable {
   }
 
 
-  //TODO 样本转为svm数据
   def Data2Svm: Unit = {
+
+    val feature_index_map: mutable.HashMap[String, String] = FileDao.readFeatureIndex2Map(PathUtil.getFeatureIndex)
+    val feature_index_map_broad = sc.broadcast(feature_index_map)
+
+
     if (!HDFSUtil.exists(PathUtil.getSvmSavePath)) {
       log.warn("start deal sample 2 svm")
-      //广播特征索引
-      val feature_index_map: mutable.HashMap[String, String] = FileDao.readFeatureIndex2Map(PathUtil.getFeatureIndex)
-      val feature_index_map_broad = sc.broadcast(feature_index_map)
       //读取训练样本
       if (mongoRdd == null) {
         mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
+        mongoRdd = mongoRdd.filter(line => {
+          val split = line.split(",")
+          split.length == 4 && StringUtils.isNotBlank(split(2))
+        })
         mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
       }
+      val broadcast = sc.broadcast(JobArgs.modelName)
       //提取样本特征 处理成索引
       mongoRdd.mapPartitions(iterable => {
+        val sex_age = broadcast.value
         val map = feature_index_map_broad.value
         val list = new ListBuffer[String]
         //性别 split 特征
@@ -236,13 +251,19 @@ object DataService extends Serializable {
         var next: String = null
         var split: Array[String] = null
         var sex: String = null
+        var age: String = null
         var feature: String = null
         while (iterable.hasNext) {
           next = iterable.next()
           split = next.split(",")
-          sex = if (split(0).equals("男")) "0"
-          else "1"
-          stringBuilder.append(sex + " ")
+          if (sex_age.equals("sex")) {
+            sex = if (split(0).equals("男")) "0"
+            else "1"
+            stringBuilder.append(sex + " ")
+          } else {
+            age = 2018 - split(1).substring(0, 4).toInt + ""
+            stringBuilder.append(age + " ")
+          }
           //特征
           feature = split(2)
           feature = feature.split("\\|").map(line => {
@@ -258,6 +279,7 @@ object DataService extends Serializable {
     } else {
       log.warn("svm has exist")
     }
+
   }
 
   def countSample(): Unit = {
@@ -265,11 +287,13 @@ object DataService extends Serializable {
       log.warn("count sample data")
       if (mongoRdd == null) {
         mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
+        mongoRdd = mongoRdd.filter(line => {
+          val split = line.split(",")
+          split.length == 4 && StringUtils.isNotBlank(split(2))
+        })
         mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
       }
-      val count = mongoRdd.filter(line => {
-        line.split(",").length == 3
-      }).flatMap(line => {
+      val count = mongoRdd.flatMap(line => {
         val split = line.split(",")
         split(2).split("\\|").map(line => (line.split(":")(0), 1))
       }).reduceByKey(_ + _).collect().sortBy(-_._2)
@@ -294,13 +318,21 @@ object DataService extends Serializable {
   }
 
   def run(): Unit = {
-    if (HDFSUtil.exists(PathUtil.getSvmSavePath) && HDFSUtil.exists(PathUtil.getFeatureIndex)) {
-      log.info("svm data and feature index has exists , end")
-    } else {
-      getSampleRdd
-      takeFeature2File
-      countSample
-      Data2Svm
+    getSampleRdd
+    getMongo()
+    takeFeature2File
+    countSample
+    Data2Svm
+  }
+
+  def getMongo(): Unit = {
+    if (mongoRdd == null) {
+      mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
+      mongoRdd = mongoRdd.filter(line => {
+        val split = line.split(",")
+        split.length == 4 && StringUtils.isNotBlank(split(2))
+      })
+      mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
     }
   }
 }

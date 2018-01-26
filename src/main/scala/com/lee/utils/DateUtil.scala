@@ -91,9 +91,10 @@ object DateUtil {
     now.format(pattern)
   }
 
-  def getDateStr(day:Int): String = {
+
+  def getDateStr(day:Int,pattern:String="yyyyMMdd"): String = {
     val now = LocalDateTime.now()
-    DateTimeFormatter.ofPattern("yyyyMMdd").format(now.plusDays(day))
+    DateTimeFormatter.ofPattern(pattern).format(now.plusDays(day))
   }
 
   def getDateInterval(strDate1:String,strDate2:String): Int ={
@@ -107,6 +108,11 @@ object DateUtil {
     val now = LocalDate.parse(baseDate,DateTimeFormatter.ofPattern("yyyyMMdd"))
     DateTimeFormatter.ofPattern("yyyyMMdd").format(now.plusDays(day))
   }
+  def getDateStr(baseDate:String,day:Int,pattern:String): String = {
+    val now = LocalDate.parse(baseDate,DateTimeFormatter.ofPattern(pattern))
+    DateTimeFormatter.ofPattern(pattern).format(now.plusDays(day))
+  }
+
 
   def getCurMinStr(): String ={
     val pattern = DateTimeFormatter.ofPattern("yyyyMMddHHmm")

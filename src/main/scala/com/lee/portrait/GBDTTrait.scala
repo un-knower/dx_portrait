@@ -81,7 +81,7 @@ class GBDTTrait extends PortraitTrait {
     GBDTTrait.model = GradientBoostedTrees.train(rddTrain,boostingStrategy)
     val labelAndPreds = rddpre.map { point =>
       val prediction = GBDTTrait.model.predict(point.features)
-      (point.label, point)
+      (prediction, point)
     }
     log.info("Learned classification GBT model:\n" + GBDTTrait.model.toDebugString)
     GBDTTrait.model.save(sc, PathUtil.getModelSavePath)

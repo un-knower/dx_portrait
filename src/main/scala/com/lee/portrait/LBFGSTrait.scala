@@ -2,6 +2,8 @@ package com.lee.portrait
 
 import java.util.Properties
 
+import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.serializer.SerializeFilter
 import com.lee.utils.{FileReporter, HDFSUtil, PathUtil, PropUtil}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.classification.LogisticRegressionModel
@@ -80,6 +82,7 @@ class LBFGSTrait extends PortraitTrait {
       (prediction, line)
     })
   }
+  override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 
 }
 

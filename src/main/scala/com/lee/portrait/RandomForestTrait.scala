@@ -1,5 +1,7 @@
 package com.lee.portrait
 
+import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.serializer.SerializeFilter
 import com.lee.utils.PathUtil
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -75,11 +77,12 @@ class RandomForestTrait extends PortraitTrait {
     RandomForestTrait.model = RandomForest.trainClassifier(rddTrain, numClasses, categoricalFeaturesInfo, numTree, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
     val labelAndPreds = rddpre.map { point =>
       val prediction = RandomForestTrait.model.predict(point.features)
-      (point.label, point)
+      (prediction, point)
     }
     RandomForestTrait.model.save(sc, PathUtil.getModelSavePath)
     labelAndPreds
   }
+  override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 }
 
 object RandomForestTrait {
