@@ -68,24 +68,19 @@ class LBFGSTrait extends PortraitTrait {
       regParam,
       initialWeightsWithIntercept)
     //得到模型
-    LBFGSTrait.model = new LogisticRegressionModel(
+    val model = new LogisticRegressionModel(
       Vectors.dense(weightsWithIntercept.toArray.slice(0, weightsWithIntercept.size - 1)),
       weightsWithIntercept(weightsWithIntercept.size - 1))
     //loss
     FileReporter.singlton.reportModelStcInfo("Loss of each step in training process:\n"+loss.mkString("\n"))
-    //存mainapp
-    HDFSUtil.deleteFileIfExists(PathUtil.getModelSavePath)
-    LBFGSTrait.model.save(sc, PathUtil.getModelSavePath)
+    FileReporter.singlton.reportModelStcInfo("Learned LBFGS model weights:\n" + model.weights)
+
     //预测
     rddpre.map(line => {
-      val prediction: Double = LBFGSTrait.model.predict(line.features)
+      val prediction: Double = model.predict(line.features)
       (prediction, line)
     })
   }
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 
-}
-
-object LBFGSTrait {
-  var model: LogisticRegressionModel = _
 }

@@ -254,7 +254,7 @@ object HDFSUtil {
         var str = reader.readLine()
         val map = new mutable.HashMap[String, String]()
         while (str != null) {
-          val split = str.trim.split(",")
+          val split = str.split(",")
           map.put(split(0), split(1))
           str = reader.readLine()
         }
@@ -289,7 +289,7 @@ object HDFSUtil {
         var str = reader.readLine()
         val map = new mutable.HashMap[String, String]()
         while (str != null) {
-          val split = str.trim.split(delimiter)
+          val split = str.split(delimiter)
           map.put(split(col1), split(col2))
           str = reader.readLine()
         }

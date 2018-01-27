@@ -2,7 +2,7 @@ package com.lee.portrait
 
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.serializer.SerializeFilter
-import com.lee.utils.PathUtil
+import com.lee.utils.{FileReporter, PathUtil}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.RandomForest
@@ -74,17 +74,19 @@ class RandomForestTrait extends PortraitTrait {
     * @param sc
     */
   override def run(sc: SparkContext): RDD[(Double, LabeledPoint)] = {
-    RandomForestTrait.model = RandomForest.trainClassifier(rddTrain, numClasses, categoricalFeaturesInfo, numTree, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+    val model = RandomForest.trainClassifier(rddTrain, numClasses, categoricalFeaturesInfo, numTree, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+    model.save(sc, PathUtil.getModelSavePath)
     val labelAndPreds = rddpre.map { point =>
-      val prediction = RandomForestTrait.model.predict(point.features)
+      val prediction = model.predict(point.features)
       (prediction, point)
     }
-    RandomForestTrait.model.save(sc, PathUtil.getModelSavePath)
+    FileReporter.singlton.reportModelStcInfo("Learned RandomForest model:\n"+model.toDebugString)
     labelAndPreds
   }
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 }
 
+/*
 object RandomForestTrait {
   var model: RandomForestModel = _
-}
+}*/

@@ -176,12 +176,14 @@ object DataService extends Serializable {
         var flag = false
         val split = line.split(",")
         if (split.length == 4) {
-          if (StringUtils.isNotBlank(split(0)) && StringUtils.isNotBlank(split(1)) && StringUtils.isNotBlank(split(2)) && StringUtils.isNotBlank(split(3))) {
-            if (split(0).equals("男") || split(0).equals("女")) {
-              if (split(1).length == 8) {
-                val i = 2018 - split(1).substring(0, 4).toInt
-                if (i <= 60 && i >= 12) {
-                  flag = true
+          if (split(2).split("\\|").length >=2) {
+            if (StringUtils.isNotBlank(split(0)) && StringUtils.isNotBlank(split(1)) && StringUtils.isNotBlank(split(2)) && StringUtils.isNotBlank(split(3))) {
+              if (split(0).equals("男") || split(0).equals("女")) {
+                if (split(1).length == 8) {
+                  val i = 2018 - split(1).substring(0, 4).toInt
+                  if (i <= 60 && i >= 12) {
+                    flag = true
+                  }
                 }
               }
             }
@@ -232,14 +234,6 @@ object DataService extends Serializable {
     if (!HDFSUtil.exists(PathUtil.getSvmSavePath)) {
       log.warn("start deal sample 2 svm")
       //读取训练样本
-      if (mongoRdd == null) {
-        mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
-        mongoRdd = mongoRdd.filter(line => {
-          val split = line.split(",")
-          split.length == 4 && StringUtils.isNotBlank(split(2))
-        })
-        mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
-      }
       val broadcast = sc.broadcast(JobArgs.modelName)
       //提取样本特征 处理成索引
       mongoRdd.mapPartitions(iterable => {
@@ -271,6 +265,9 @@ object DataService extends Serializable {
             (map.getOrElse(split1(0), null), split1(1))
           }).filter(_._1 != null).sortBy(_._1.toDouble).map(line => line._1 + ":" + line._2).mkString(" ")
           stringBuilder.append(feature)
+          if (stringBuilder.toString().split(" ").length ==1 ) {
+            println(next)
+          }
           list += stringBuilder.toString()
           stringBuilder.clear()
         }
@@ -330,7 +327,7 @@ object DataService extends Serializable {
       mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
       mongoRdd = mongoRdd.filter(line => {
         val split = line.split(",")
-        split.length == 4 && StringUtils.isNotBlank(split(2))
+        split.length == 4 && StringUtils.isNotBlank(split(2)) && split(2).split("\\|").length >=2
       })
       mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
     }

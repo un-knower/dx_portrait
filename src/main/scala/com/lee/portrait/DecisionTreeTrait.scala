@@ -2,7 +2,7 @@ package com.lee.portrait
 
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.serializer.SerializeFilter
-import com.lee.utils.{PathUtil, PropUtil}
+import com.lee.utils.{FileReporter, PathUtil, PropUtil}
 import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.DecisionTree
@@ -63,6 +63,7 @@ class DecisionTreeTrait extends PortraitTrait {
   override def run(sc: SparkContext) = {
     val model: DecisionTreeModel = DecisionTree.trainClassifier(rddTrain, numClasses, categoricalFeaturesInfo, impurity, maxDepth, maxBins)
     model.save(sc, PathUtil.getModelSavePath)
+    FileReporter.singlton.reportModelStcInfo("Learned classification DecisionTree model:\n"+model.toDebugString)
     rddpre.map { point =>
       val prediction: Double = model.predict(point.features)
       (prediction, point)

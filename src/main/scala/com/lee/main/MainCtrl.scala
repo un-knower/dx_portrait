@@ -5,7 +5,9 @@ import com.lee.service.{DataService, ServiceTrait}
 import com.lee.utils.{FIles, FileReporter, HDFSUtil, PropUtil}
 import org.apache.commons.lang.StringUtils
 import org.apache.log4j.Logger
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.{SparkConf, SparkContext}
+import org.bson.BSONObject
 
 import scala.collection.JavaConversions._
 
@@ -30,11 +32,13 @@ object MainCtrl {
     prop.entrySet().foreach(tup => {
       conf.set(tup.getKey.toString, tup.getValue.toString)
     })
+    conf.registerKryoClasses(Array(classOf[LabeledPoint],classOf[BSONObject]))
     conf.setAppName(getClass.getSimpleName)
     sc = new SparkContext(conf)
     if (JobArgs.sparkLogLevel != null) {
       sc.setLogLevel(JobArgs.sparkLogLevel)
     }
+
   }
 
   def init(s: String) = {

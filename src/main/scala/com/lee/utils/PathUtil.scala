@@ -29,7 +29,7 @@ object PathUtil {
   //特征索引
   def getFeatureIndex = JobArgs.basePath+ "/config/" + date+"_feature_index.txt"
   //sample 统计文件
-  def getSampleCountPath(name:String) = JobArgs.outputPath+"/count/"+name
+  def getSampleCountPath(name:String) = JobArgs.outputPath+"/count/"+date+"_"+name
   //mongo orgin
   def getMongoOrginPath = JobArgs.basePath+"/data/orgindata/"+date+"/"
 }

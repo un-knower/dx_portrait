@@ -78,18 +78,19 @@ class GBDTTrait extends PortraitTrait {
     * @param sc
     */
   override def run(sc: SparkContext): RDD[(Double, LabeledPoint)] = {
-    GBDTTrait.model = GradientBoostedTrees.train(rddTrain,boostingStrategy)
+    val model = GradientBoostedTrees.train(rddTrain,boostingStrategy)
     val labelAndPreds = rddpre.map { point =>
-      val prediction = GBDTTrait.model.predict(point.features)
+      val prediction = model.predict(point.features)
       (prediction, point)
     }
-    log.info("Learned classification GBT model:\n" + GBDTTrait.model.toDebugString)
-    GBDTTrait.model.save(sc, PathUtil.getModelSavePath)
+    FileReporter.singlton.reportModelStcInfo("Learned classification GBT model:\n" + model.toDebugString)
+    model.save(sc, PathUtil.getModelSavePath)
     labelAndPreds
   }
 }
 
+/*
 object GBDTTrait {
   var model: GradientBoostedTreesModel = _
 
-}
+}*/

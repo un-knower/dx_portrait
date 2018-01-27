@@ -7,6 +7,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 
 /**
   * Created by root on 2018/1/10.
@@ -29,7 +30,7 @@ trait PortraitTrait extends LogUtils {
     //TODO 增加样本数据处理
     lpRdd = rdd
     dealSampleRDD()
-    lpRdd.cache()
+    lpRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
     //切分比例
     if (prop.getProperty("split.arr") != null) {
       splitArr = prop.getProperty("split.arr").split(",").map(_.toDouble)
