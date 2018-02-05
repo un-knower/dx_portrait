@@ -105,20 +105,40 @@ object MllibUtils {
     */
   def print(predictRdd: RDD[(Int, Int)]): StcStats = {
     predictRdd.cache()
+    val collect = predictRdd.map(line => {
+      line._2
+    }).distinct().collect()
+
     val stats = new StcStats()
-    val tp = getTp(predictRdd)
-    val tn = getTn(predictRdd)
-    val fn = getFn(predictRdd)
-    val fp = getFp(predictRdd)
-    stats.tp = tp
-    stats.tn = tn
-    stats.fn = fn
-    stats.fp = fp
-    stats.accuracy = getAccuracy(predictRdd)
-    stats.precision = getPrecision(predictRdd)
-    stats.recall = getRecall(predictRdd)
-    stats.roc = getRoc(predictRdd)
-    stats.err = getErr(predictRdd)
+    if (collect.size == 2) {
+      val tp = getTp(predictRdd)
+      val tn = getTn(predictRdd)
+      val fn = getFn(predictRdd)
+      val fp = getFp(predictRdd)
+      stats.tp = tp
+      stats.tn = tn
+      stats.fn = fn
+      stats.fp = fp
+      stats.accuracy = getAccuracy(predictRdd)
+      stats.precision = getPrecision(predictRdd)
+      stats.recall = getRecall(predictRdd)
+      stats.roc = getRoc(predictRdd)
+      stats.err = getErr(predictRdd)
+    }else{
+      val tp = getTp(predictRdd)
+      val tn = getTn(predictRdd)
+      val fn = getFn(predictRdd)
+      val fp = getFp(predictRdd)
+      stats.tp = tp
+      stats.tn = tn
+      stats.fn = fn
+      stats.fp = fp
+      stats.accuracy = getAccuracy(predictRdd)
+      stats.precision = getPrecision(predictRdd)
+      stats.recall = getRecall(predictRdd)
+      stats.roc = getRoc(predictRdd)
+      stats.err = getErr(predictRdd)
+    }
     stats
   }
 }

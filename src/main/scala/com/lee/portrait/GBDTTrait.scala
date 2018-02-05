@@ -25,7 +25,7 @@ class GBDTTrait extends PortraitTrait {
   @BeanProperty
   var numIterations: Int = 4
   @BeanProperty
-  var numClasses: Int = 2
+  var numClasses: Int = _
   @BeanProperty
   var maxDepth: Int = 8
   @BeanProperty
@@ -44,6 +44,9 @@ class GBDTTrait extends PortraitTrait {
   override def init(rdd: RDD[LabeledPoint], propName: String): Unit = {
     super.init(rdd, propName)
     //模型参数
+    if (prop.get("GBDT.learnGoal") != null) {
+      learnGoal = prop.getProperty("GBDT.learnGoal")
+    }
     boostingStrategy = BoostingStrategy.defaultParams(learnGoal)
     //迭代次数
     if (prop.getProperty("GBDT.numIterations") != null) {
@@ -53,8 +56,8 @@ class GBDTTrait extends PortraitTrait {
     //几分类
     if (prop.get("GBDT.numClasses") != null) {
       numClasses = prop.getProperty("GBDT.numClasses").toInt
+      boostingStrategy.getTreeStrategy().setNumClasses(numClasses)
     }
-    boostingStrategy.getTreeStrategy().setNumClasses(numClasses)
     //树的最大深度
     if (prop.get("GBDT.maxDepth") !=null) {
       maxDepth = prop.getProperty("GBDT.maxDepth").toInt
@@ -78,19 +81,22 @@ class GBDTTrait extends PortraitTrait {
     * @param sc
     */
   override def run(sc: SparkContext): RDD[(Double, LabeledPoint)] = {
-    val model = GradientBoostedTrees.train(rddTrain,boostingStrategy)
-    val labelAndPreds = rddpre.map { point =>
-      val prediction = model.predict(point.features)
-      (prediction, point)
+    val model: GradientBoostedTreesModel = GradientBoostedTrees.train(rddTrain, boostingStrategy)
+    var labelAndPreds:RDD[(Double, LabeledPoint)] =null
+    if (learnGoal.equals("Classification")) {
+      labelAndPreds = rddpre.map { point =>
+        val prediction = model.predict(point.features)
+        (prediction, point)
+      }
+    }else{
+      labelAndPreds = rddpre.map { point =>
+        val prediction = model.predict(point.features)
+        (prediction.round.toDouble, point)
+      }
     }
+
     FileReporter.singlton.reportModelStcInfo("Learned classification GBT model:\n" + model.toDebugString)
     model.save(sc, PathUtil.getModelSavePath)
     labelAndPreds
   }
 }
-
-/*
-object GBDTTrait {
-  var model: GradientBoostedTreesModel = _
-
-}*/

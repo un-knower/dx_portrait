@@ -36,6 +36,8 @@ class LBFGSTrait extends PortraitTrait {
   var numFeatures: Int = _
   @BeanProperty
   var convergenceTol: Double = 1e-4
+  @BeanProperty
+  var threshold: Double = _
 
   var initialWeightsWithIntercept: Vector = _
 
@@ -47,6 +49,7 @@ class LBFGSTrait extends PortraitTrait {
     if (prop.getProperty("LBFGS.convergenceTol") != null) convergenceTol = prop.getProperty("LBFGS.convergenceTol").toDouble
     if (prop.getProperty("LBFGS.maxNumIterations") != null) maxNumIterations = prop.getProperty("LBFGS.maxNumIterations").toInt
     if (prop.getProperty("LBFGS.regParam") != null) regParam = prop.getProperty("LBFGS.regParam").toDouble
+    if (prop.getProperty("LBFGS.threshold") != null) threshold = prop.getProperty("LBFGS.threshold").toDouble
     //特征的数量
     numFeatures = lpRdd.take(1)(0).features.size
   }
@@ -68,18 +71,22 @@ class LBFGSTrait extends PortraitTrait {
       regParam,
       initialWeightsWithIntercept)
     //得到模型
-    val model = new LogisticRegressionModel(
+    val model: LogisticRegressionModel = new LogisticRegressionModel(
       Vectors.dense(weightsWithIntercept.toArray.slice(0, weightsWithIntercept.size - 1)),
       weightsWithIntercept(weightsWithIntercept.size - 1))
     //loss
     FileReporter.singlton.reportModelStcInfo("Loss of each step in training process:\n"+loss.mkString("\n"))
     FileReporter.singlton.reportModelStcInfo("Learned LBFGS model weights:\n" + model.weights)
-
+    if (threshold != null) {
+      model.setThreshold(threshold)
+    }
     //预测
     rddpre.map(line => {
       val prediction: Double = model.predict(line.features)
       (prediction, line)
     })
+    
+
   }
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 

@@ -29,7 +29,6 @@ trait PortraitTrait extends LogUtils {
     prop = PropUtil.getPropByName(propName)
     //TODO 增加样本数据处理
     lpRdd = rdd
-    dealSampleRDD()
     lpRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
     //切分比例
     if (prop.getProperty("split.arr") != null) {
@@ -54,8 +53,4 @@ trait PortraitTrait extends LogUtils {
   def run(sc: SparkContext):RDD[(Double, LabeledPoint)] = ???
 
 
-  def dealSampleRDD(): Unit ={
-    val label_count: Array[(Double, Int)] = lpRdd.map(line=>(line.label,1)).reduceByKey(_+_).collect()
-    val minCount = label_count.sortBy(_._2).head._2
-  }
 }

@@ -1,6 +1,6 @@
 package com.lee.dao
 
-import java.io.PrintWriter
+import java.io.{FileWriter, PrintWriter}
 
 import com.lee.utils.{HDFSUtil, PathUtil}
 import org.apache.hadoop.conf.Configuration
@@ -28,12 +28,12 @@ object FileDao {
   }
 
   def readFeatureIndex2Map(path: String) = {
-    HDFSUtil.readHdfs2Map(path," ")
+    HDFSUtil.readHdfs2Map(path)
   }
 
   def saveFeatureIndex(feature_index: Array[(String, Int)], getFeatureIndex: String) = {
     val writer = new PrintWriter(HDFSUtil.getOutout(PathUtil.getFeatureIndex, false))
-    feature_index.foreach(line => writer.println(line._1 + " " + line._2))
+    feature_index.foreach(line => writer.println(line._1 + "," + line._2))
     writer.flush()
     writer.close()
   }
@@ -79,5 +79,23 @@ object FileDao {
     map
   }
 
+  def saveString(name:String,info:String): Unit ={
+    val writer = new FileWriter(name, true)
+    writer.write(info)
+    writer.flush()
+    writer.close()
+  }
+
+  def getFilterFeature(path:String) = {
+    val reader = new LineReader(HDFSUtil.openFile(path))
+    val text = new Text()
+    val set = new mutable.HashSet[String]()
+    while (reader.readLine(text)>0) {
+      val line = text.toString
+      set += line.trim
+    }
+    reader.close()
+    set
+  }
 
 }

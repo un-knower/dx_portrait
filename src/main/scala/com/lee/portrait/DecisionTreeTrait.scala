@@ -72,7 +72,3 @@ class DecisionTreeTrait extends PortraitTrait {
 
   override def toString: String = JSON.toJSONString(this, new Array[SerializeFilter](0))
 }
-
-object DecisionTreeTrait {
-  var model: DecisionTreeModel = _
-}

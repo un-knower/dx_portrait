@@ -29,6 +29,8 @@ object JobArgs {
   var sampleCount:String = _
   @BeanProperty
   var modelName:String = _
+  @BeanProperty
+  var sampleTake:String = _
 
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 

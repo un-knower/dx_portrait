@@ -46,6 +46,9 @@ object MainCtrl {
     if (PropUtil.getProperty("trait.root.path") != null) {
       JobArgs.basePath = PropUtil.getProperty("trait.root.path")
     }
+    if (PropUtil.getProperty("sample.take") != null) {
+      JobArgs.sampleTake = PropUtil.getProperty("sample.take")
+    }
 
     if (PropUtil.getProperty("trait.output.path") != null) {
       JobArgs.outputPath = PropUtil.getProperty("trait.output.path")

@@ -18,7 +18,7 @@ object LoadModel {
     conf.setAppName("test")
     conf.setMaster("local")
     val sc = new SparkContext(conf)
-    val model = DecisionTreeModel.load(sc,"hdfs://master:8020/user/lihw/output/model/sex/DecisionTree/201801251750")
-    println(model.toDebugString)
+    val parallelize = sc.parallelize(Array(1,2,3))
+    parallelize.foreach(println)
   }
 }

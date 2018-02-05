@@ -85,8 +85,3 @@ class RandomForestTrait extends PortraitTrait {
   }
   override def toString: String = JSON.toJSONString(this,new Array[SerializeFilter](0))
 }
-
-/*
-object RandomForestTrait {
-  var model: RandomForestModel = _
-}*/

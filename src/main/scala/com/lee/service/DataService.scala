@@ -176,7 +176,7 @@ object DataService extends Serializable {
         var flag = false
         val split = line.split(",")
         if (split.length == 4) {
-          if (split(2).split("\\|").length >=2) {
+          if (split(2).split("\\|").length >= 2) {
             if (StringUtils.isNotBlank(split(0)) && StringUtils.isNotBlank(split(1)) && StringUtils.isNotBlank(split(2)) && StringUtils.isNotBlank(split(3))) {
               if (split(0).equals("男") || split(0).equals("女")) {
                 if (split(1).length == 8) {
@@ -194,7 +194,7 @@ object DataService extends Serializable {
       getMongo()
       mongoRdd.saveAsTextFile(PathUtil.getMongoSampleDataPath)
     } else {
-      log.warn("taday has deal mongo data")
+      log.warn("mongo data has exists")
     }
 
 
@@ -203,6 +203,7 @@ object DataService extends Serializable {
 
   def takeFeature2File = {
     if (!HDFSUtil.exists(PathUtil.getFeatureIndex)) {
+      log.warn("start take feature")
       if (mongoRdd == null) {
         mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
         mongoRdd = mongoRdd.filter(line => {
@@ -217,67 +218,13 @@ object DataService extends Serializable {
         features.split("\\|").map(line => line.split(":")(0))
       }).distinct().collect().sorted.zipWithIndex.map(line => (line._1, line._2 + 1))
       FileDao.saveFeatureIndex(feature_index, PathUtil.getFeatureIndex)
-      log.warn("take feature index success")
+
     } else {
       log.warn("feature index has exists")
     }
 
   }
 
-
-  def Data2Svm: Unit = {
-
-    val feature_index_map: mutable.HashMap[String, String] = FileDao.readFeatureIndex2Map(PathUtil.getFeatureIndex)
-    val feature_index_map_broad = sc.broadcast(feature_index_map)
-
-
-    if (!HDFSUtil.exists(PathUtil.getSvmSavePath)) {
-      log.warn("start deal sample 2 svm")
-      //读取训练样本
-      val broadcast = sc.broadcast(JobArgs.modelName)
-      //提取样本特征 处理成索引
-      mongoRdd.mapPartitions(iterable => {
-        val sex_age = broadcast.value
-        val map = feature_index_map_broad.value
-        val list = new ListBuffer[String]
-        //性别 split 特征
-        val stringBuilder: mutable.StringBuilder = new StringBuilder
-        var next: String = null
-        var split: Array[String] = null
-        var sex: String = null
-        var age: String = null
-        var feature: String = null
-        while (iterable.hasNext) {
-          next = iterable.next()
-          split = next.split(",")
-          if (sex_age.equals("sex")) {
-            sex = if (split(0).equals("男")) "0"
-            else "1"
-            stringBuilder.append(sex + " ")
-          } else {
-            age = 2018 - split(1).substring(0, 4).toInt + ""
-            stringBuilder.append(age + " ")
-          }
-          //特征
-          feature = split(2)
-          feature = feature.split("\\|").map(line => {
-            val split1 = line.split(":")
-            (map.getOrElse(split1(0), null), split1(1))
-          }).filter(_._1 != null).sortBy(_._1.toDouble).map(line => line._1 + ":" + line._2).mkString(" ")
-          stringBuilder.append(feature)
-          if (stringBuilder.toString().split(" ").length ==1 ) {
-            println(next)
-          }
-          list += stringBuilder.toString()
-          stringBuilder.clear()
-        }
-        list.iterator
-      }).saveAsTextFile(PathUtil.getSvmSavePath)
-    } else {
-      log.warn("svm has exist")
-    }
-
-  }
 
   def countSample(): Unit = {
     if (JobArgs.sampleCount.equals("1")) {
@@ -300,7 +247,7 @@ object DataService extends Serializable {
         val split = line.split(",")
         (split(0), 1)
       }).reduceByKey(_ + _).collect().sortBy(-_._2)
-      FileDao.saveSampleCountFile(sexCount, PathUtil.getSampleCountPath("sexcount.txt"))
+      FileDao.saveSampleCountFile(sexCount, PathUtil.getSampleCountPath("samplesexcount.txt"))
       //年龄统计
       val ageCount = mongoRdd.map(line => {
         val split = line.split(",")
@@ -310,16 +257,125 @@ object DataService extends Serializable {
           (split(1), 1)
         }
       }).reduceByKey(_ + _).collect().sortBy(-_._2)
-      FileDao.saveSampleCountFile(ageCount, PathUtil.getSampleCountPath("agecount.txt"))
+      FileDao.saveSampleCountFile(ageCount, PathUtil.getSampleCountPath("sampleagecount.txt"))
     }
+  }
+
+
+  def countSVM(): Unit = {
+    if (JobArgs.sampleCount.equals("1")) {
+      log.warn("count svm data")
+      if (mongoRdd == null) {
+        mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
+        mongoRdd = mongoRdd.filter(line => {
+          val split = line.split(",")
+          split.length == 4 && StringUtils.isNotBlank(split(2))
+        })
+        mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
+      }
+      val svmRdd = sc.textFile(PathUtil.getSvmSavePath)
+      val svmCount = svmRdd.map(line => {
+        (line.split(" ")(0), 1)
+      }).reduceByKey(_ + _).collect()
+      FileDao.saveSampleCountFile(svmCount, PathUtil.getSampleCountPath(JobArgs.modelName + "_svmcount.txt"))
+    }
+  }
+
+  def dealData2Svm(): Unit = {
+    val feature_index_map: mutable.HashMap[String, String] = FileDao.readFeatureIndex2Map(PathUtil.getFeatureIndex)
+    val feature_index_map_broad = sc.broadcast(feature_index_map)
+    //增加feature过滤
+    val feature_filter = new mutable.HashSet[String]()
+    if (HDFSUtil.exists(PathUtil.configPathByName("filter_feature.txt"))) {
+      log.warn("read filter feature")
+      feature_filter ++= FileDao.getFilterFeature(PathUtil.configPathByName("filter_feature.txt"))
+    }
+    val feature_filter_broad = sc.broadcast(feature_filter)
+    if (!HDFSUtil.exists(PathUtil.getSvmSavePath)) {
+      log.warn("start deal sample 2 svm")
+      //读取训练样本
+      val broadcast = sc.broadcast(JobArgs.modelName)
+      //提取样本特征 处理成索引
+      var svmRdd: RDD[String] = mongoRdd.mapPartitions(iterable => {
+        val feature_filter = feature_filter_broad.value
+        val sex_age = broadcast.value
+        val map = feature_index_map_broad.value
+        val list = new ListBuffer[String]
+        //性别 split 特征
+        val stringBuilder: StringBuilder = new StringBuilder
+        var next: String = null
+        var split: Array[String] = null
+        var sex: String = null
+        var age: String = null
+        var feature: String = null
+        while (iterable.hasNext) {
+          next = iterable.next()
+          split = next.split(",")
+          if (sex_age.equals("sex")) {
+            sex = if (split(0).equals("男")) "0"
+            else "1"
+            stringBuilder.append(sex + " ")
+          } else {
+            age = 2018 - split(1).substring(0, 4).toInt + ""
+            stringBuilder.append(age + " ")
+          }
+          //特征
+          feature = split(2)
+          var feature_weights = feature.split("\\|").map(line => {
+            val strs = line.split(":")
+            (strs(0), strs(1))
+          })
+          //如果没用特征过滤
+          if (feature_filter.size != 0) {
+            feature_weights = feature_weights.filter(line => {
+//              feature_filter.contains(line._1) || feature_filter.contains(line._1.split("_")(0))
+              feature_filter.contains(line._1)
+            })
+          }
+          //取特征索引
+          val res_feature = feature_weights.map(line => {
+            (map.getOrElse(line._1, null), line._2)
+          }).filter(_._1 != null).sortBy(_._1.toDouble).map(line => line._1 + ":" + line._2)
+          res_feature
+
+          if (res_feature.size >= 3) {
+            stringBuilder.append(res_feature.mkString(" "))
+            list += stringBuilder.toString()
+          }
+          stringBuilder.clear()
+        }
+        list.iterator
+      })
+
+      if (JobArgs.sampleTake != null) {
+        //过滤男样本10W个
+        val sort = svmRdd.map(line => {
+          (line, line.split(" ").length)
+        }).sortBy(-_._2)
+        val count = JobArgs.sampleTake.toInt
+        val pSample = sort.filter(line => {
+          line._1.split(" ")(0).equals("1")
+        }).zipWithIndex().filter(_._2 < count)
+        val nSample = sort.filter(line => {
+          line._1.split(" ")(0).equals("0")
+        }).zipWithIndex().filter(_._2 < count)
+        svmRdd = pSample.union(nSample).map(_._1._1)
+      }
+      //过滤男样本10W个
+      svmRdd.repartition(20).saveAsTextFile(PathUtil.getSvmSavePath)
+    } else {
+      log.warn("svm has exist")
+    }
+
   }
 
   def run(): Unit = {
     getSampleRdd
-    getMongo()
+    getMongo
     takeFeature2File
     countSample
-    Data2Svm
+    dealData2Svm
+    countSVM
   }
 
   def getMongo(): Unit = {
@@ -327,7 +383,7 @@ object DataService extends Serializable {
       mongoRdd = sc.textFile(PathUtil.getMongoSampleDataPath)
       mongoRdd = mongoRdd.filter(line => {
         val split = line.split(",")
-        split.length == 4 && StringUtils.isNotBlank(split(2)) && split(2).split("\\|").length >=2
+        split.length == 4 && StringUtils.isNotBlank(split(2)) && split(2).split("\\|").length >= 2
       })
       mongoRdd.persist(StorageLevel.MEMORY_AND_DISK_SER)
     }
